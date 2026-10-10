@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UNI APP | Client Jobs</title>
+    
+    <!-- PWA Manifest Link -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <meta name="theme-color" content="#075c4c">
+
+    <style>
+        :root { color-scheme: light; --green: #087f68; --green-dark: #075c4c; --ink: #17231f; --muted: #66756f; --line: #e4eae6; --paper: #fff; --canvas: #f2f5f2; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { min-height: 100vh; min-height: 100dvh; background: #e8eeea; color: var(--ink); display: flex; justify-content: center; }
+        button, input { font: inherit; }
+        button { touch-action: manipulation; }
+        button:focus-visible, input:focus-visible, .chat-item:focus-visible { outline: 3px solid #7ad6bd; outline-offset: 2px; }
+        .app-container { width: 100%; max-width: 520px; height: 100vh; height: 100dvh; background: var(--canvas); display: flex; flex-direction: column; overflow: hidden; }
+        @media (min-width: 560px) { body { align-items: center; padding: 24px; } .app-container { height: min(900px, calc(100dvh - 48px)); border: 1px solid #dce5df; border-radius: 14px; box-shadow: 0 18px 60px #24382d24; } }
+        .auth-screen { flex: 1; overflow-y: auto; display: flex; flex-direction: column; justify-content: center; padding: 24px; background: linear-gradient(155deg, #e6f1e9, #f6f7f3 58%, #e9f0ed); }
+        .auth-card { width: 100%; max-width: 390px; margin: auto; padding: 24px; border: 1px solid #dfe8e1; border-radius: 10px; background: white; box-shadow: 0 12px 32px #16342712; }
+        .auth-card h1 { color: var(--green-dark); font-size: 1.55rem; margin-bottom: 6px; }
+        .auth-card > p { color: var(--muted); font-size: .88rem; line-height: 1.5; margin-bottom: 18px; }
+        .auth-field { display: block; margin: 12px 0; color: #344840; font-size: .8rem; font-weight: 650; }
+        .auth-field input { display: block; width: 100%; height: 44px; margin-top: 6px; border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; font-size: .9rem; }
+        .auth-submit, .auth-toggle { width: 100%; min-height: 44px; border-radius: 6px; font-weight: 700; cursor: pointer; }
+        .auth-submit { margin-top: 8px; border: 0; color: white; background: var(--green); }
+        .auth-toggle { margin-top: 8px; border: 1px solid var(--line); color: var(--green-dark); background: white; }
+        .auth-message { margin: 12px 0; padding: 10px; border-radius: 5px; background: #eef5ef; color: #315342; font-size: .8rem; line-height: 1.45; }
+        .auth-message.error { background: #fff0ed; color: #87352d; }
+        .auth-setup { padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted) !important; font-size: .74rem !important; }
+        .main-app { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+        .header { min-height: 64px; background: var(--green-dark); color: white; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .header h2 { font-size: 1.05rem; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .alarm-indicator { background: #9c332c; color: white; padding: 7px 10px; border: 0; border-radius: 6px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; display: none; cursor: pointer; }
+        .alarm-indicator.active { display: inline-flex; align-items: center; gap: 6px; animation: pulse 1.4s ease-in-out infinite; }
+        @keyframes pulse { 50% { opacity: .65; } }
+        .screen { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+        .hidden { display: none !important; }
+        .chat-list { flex: 1; overflow-y: auto; background: var(--paper); }
+        .chat-item { width: 100%; min-height: 76px; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 0; border-bottom: 1px solid var(--line); background: var(--paper); text-align: left; cursor: pointer; }
+        .chat-item:hover { background: #f7faf8; }
+        .avatar { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 12px; background: #d8eee6; display: grid; place-items: center; font-weight: 700; color: var(--green-dark); }
+        .chat-info { flex: 1; min-width: 0; }
+        .chat-info h4 { font-size: .94rem; color: var(--ink); margin-bottom: 4px; }
+        .chat-info p { font-size: .82rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .status-badge { flex: 0 0 auto; font-size: .66rem; padding: 5px 7px; border-radius: 5px; font-weight: 700; text-transform: uppercase; }
+        .badge-pending { background: #fff0df; color: #8a4d08; }
+        .badge-progress { background: #e8f1ff; color: #28568c; }
+        .badge-completed { background: #e2f4e9; color: #25633a; }
+        .chat-back { width: 40px; height: 40px; flex: 0 0 40px; background: transparent; border: 0; color: white; font-size: 1.45rem; cursor: pointer; }
+        .messages-area { flex: 1; min-height: 0; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background-color: #f1f5f1; background-image: radial-gradient(#d8e2db 0.65px, transparent 0.65px); background-size: 14px 14px; }
+        .message { max-width: min(86%, 390px); padding: 10px 12px; border-radius: 10px; font-size: .9rem; line-height: 1.45; overflow-wrap: anywhere; box-shadow: 0 1px 2px #14281a12; }
+        .message.incoming { background: white; align-self: flex-start; border-top-left-radius: 3px; }
+        .message.outgoing { background: #dff4e7; align-self: flex-end; border-top-right-radius: 3px; }
+        .message-time { display: block; margin-top: 5px; color: var(--muted); font-size: .68rem; text-align: right; }
+        .job-card { background: #f6faf7; border-left: 3px solid var(--green); padding: 10px; margin-top: 8px; border-radius: 5px; }
+        .job-card p { font-size: .82rem; margin-bottom: 9px; }
+        .job-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+        .job-actions button { min-height: 36px; background: var(--green); color: white; border: 0; padding: 7px 10px; border-radius: 5px; font-size: .76rem; font-weight: 650; cursor: pointer; }
+        .job-actions button.reject { background: #f2e8e6; color: #8c3029; }
+        .job-actions button:disabled { opacity: .6; cursor: default; }
+        .receipt-card { background: white; border: 1px dashed var(--green); padding: 12px; margin-top: 2px; border-radius: 5px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+        .receipt-card h5 { color: var(--green-dark); font-size: .86rem; border-bottom: 1px solid var(--line); padding-bottom: 7px; margin-bottom: 7px; }
+        .receipt-card p { font-size: .8rem; margin-bottom: 4px; }
+        .receipt-total { font-weight: 700; margin-top: 8px; border-top: 1px solid var(--line); padding-top: 7px; }
+        .chat-input-bar { background: white; border-top: 1px solid var(--line); padding: 10px; padding-bottom: max(10px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 8px; }
+        .chat-input-bar input { flex: 1; min-width: 0; min-height: 44px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 8px; outline: none; font-size: .9rem; }
+        .action-btn, .send-btn { flex: 0 0 44px; width: 44px; height: 44px; border: 0; border-radius: 8px; cursor: pointer; display: grid; place-items: center; font-size: 1.1rem; }
+        .action-btn { background: #eaf2ed; }
+        .chat-input-bar .send-btn { background: var(--green); color: white; }
+        .sim-panel { background: #173b32; color: #eaf4ef; padding: 10px 12px; padding-bottom: max(10px, env(safe-area-inset-bottom)); display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: .78rem; }
+        .sim-panel button { min-height: 38px; background: #f2b34c; color: #30230c; border: 0; padding: 7px 10px; border-radius: 5px; cursor: pointer; font-size: .76rem; font-weight: 700; }
+        .empty-state { padding: 28px 18px; color: var(--muted); text-align: center; font-size: .9rem; }
+        .inbox-controls { background: white; padding: 12px 14px 10px; border-bottom: 1px solid var(--line); }
+        .inbox-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0 2px 10px; }
+        .inbox-heading h3 { font-size: .95rem; }
+            .inbox-heading { align-items: center; }
+            .inbox-heading-main { display: flex; flex-direction: column; gap: 3px; }
+            .inbox-heading button { min-height: 36px; border: 0; border-radius: 5px; padding: 7px 10px; color: white; background: var(--green); font-size: .76rem; font-weight: 700; cursor: pointer; }
+            .sim-panel .secondary-action { background: transparent; border: 1px solid #78958a; color: white; }
+        .inbox-heading span { color: var(--muted); font-size: .75rem; }
+        .search-wrap { position: relative; margin-bottom: 10px; }
+        .search-wrap::before { content: '⌕'; position: absolute; left: 12px; top: 5px; color: var(--muted); font-size: 1.4rem; }
+        .search-input { width: 100%; height: 40px; padding: 8px 12px 8px 36px; border: 1px solid var(--line); border-radius: 7px; background: #f6f8f6; font-size: .85rem; }
+        .filter-row { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none; }
+        .filter-row::-webkit-scrollbar { display: none; }
+        .filter-pill { min-height: 34px; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; background: white; color: #44554d; font-size: .74rem; cursor: pointer; }
+        .filter-pill[aria-pressed="true"] { background: #e6f3ed; border-color: #b9d8c8; color: var(--green-dark); font-weight: 700; }
+        .filter-count { color: var(--muted); font-variant-numeric: tabular-nums; }
+        .chat-item.is-unread { background: #f6fbf7; }
+        .chat-topline { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .chat-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .chat-preview { display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .unread-dot { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--green); }
+        .inbox-empty { padding: 34px 20px; color: var(--muted); text-align: center; line-height: 1.5; }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <section id="authScreen" class="auth-screen" aria-labelledby="authTitle">
+            <div class="auth-card">
+                <h1 id="authTitle">UNI APP</h1>
+                <p>Sign in to message people and manage shared client jobs.</p>
+                <div id="authMessage" class="auth-message" role="status" aria-live="polite">Connect your UNI APP backend to get started.</div>
+                <form id="authForm">
+                    <div id="signupFields" class="hidden">
+                        <label class="auth-field">Your name
+                            <input id="displayNameInput" type="text" autocomplete="name" maxlength="60" placeholder="Name shown to others">
+                        </label>
+                        <label class="auth-field">Username
+                            <input id="usernameInput" type="text" autocomplete="username" minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" placeholder="letters, numbers, underscore">
+                        </label>
+                    </div>
+                    <label class="auth-field">Email
+                        <input id="emailInput" type="email" autocomplete="email" required placeholder="you@example.com">
+                    </label>
+                    <label class="auth-field">Password
+                        <input id="passwordInput" type="password" autocomplete="current-password" minlength="8" required placeholder="At least 8 characters">
+                    </label>
+                    <button id="authSubmit" class="auth-submit" type="submit">Sign in</button>
+                    <button id="authToggle" class="auth-toggle" type="button">Create an account</button>
+                </form>
+                <p class="auth-setup">App setup needs a Supabase project URL and public anon/publishable key in <strong>multiuser.js</strong>. Never put a service-role key in the app.</p>
+            </div>
+        </section>
+
+        <div id="mainApp" class="main-app hidden">
+        <!-- App Header -->
+        <div class="header">
+            <div class="header-title-wrap" style="display: flex; align-items: center; min-width: 0;">
+                <button id="backBtn" class="chat-back hidden" type="button" aria-label="Back to inbox" onclick="goBackToInbox()">←</button>
+                <div>
+                    <h2 id="headerTitle">UNI APP</h2>
+                    <p id="headerSubtitle" style="font-size:.68rem;color:#d1e6dc;margin-top:2px">CLIENT MESSAGES + JOBS</p>
+                </div>
+            </div>
+            <button id="alarmBadge" class="alarm-indicator" type="button" aria-label="Show missed client jobs" title="Show missed client jobs" aria-live="polite">
+                <span aria-hidden="true">🔔</span><span id="alarmCount">0</span>
+            </button>
+        </div>
+
+        <!-- SCREEN 1: Inbox List -->
+        <div id="inboxScreen" class="screen">
+            <section class="inbox-controls" aria-label="Find and filter client chats">
+                <div class="inbox-heading">
+                    <div class="inbox-heading-main">
+                        <h3>Messages</h3>
+                        <span id="inboxSummary">0 conversations</span>
+                    </div>
+                    <button id="newChatButton" type="button">New chat</button>
+                </div>
+                <label class="search-wrap">
+                    <input class="search-input" id="searchInput" type="search" placeholder="Search clients or jobs" autocomplete="off" aria-label="Search clients and jobs">
+                </label>
+                <div class="filter-row" role="group" aria-label="Filter conversations">
+                    <button class="filter-pill" type="button" data-filter="all" aria-pressed="true">All <span class="filter-count" id="countAll">0</span></button>
+                    <button class="filter-pill" type="button" data-filter="unread" aria-pressed="false">Unread <span class="filter-count" id="countUnread">0</span></button>
+                    <button class="filter-pill" type="button" data-filter="Pending" aria-pressed="false">Queued <span class="filter-count" id="countPending">0</span></button>
+                    <button class="filter-pill" type="button" data-filter="In Progress" aria-pressed="false">In progress <span class="filter-count" id="countProgress">0</span></button>
+                    <button class="filter-pill" type="button" data-filter="Completed" aria-pressed="false">Done <span class="filter-count" id="countCompleted">0</span></button>
+                </div>
+            </section>
+            <div class="chat-list" id="chatListContainer">
+                <p class="inbox-empty hidden" id="emptyInbox">No conversations match this view.</p>
+            </div>
+        </div>
+
+        <!-- SCREEN 2: Chat Window -->
+        <div id="chatScreen" class="screen hidden">
+            <div class="messages-area" id="messagesArea">
+                <!-- Messages go here -->
+            </div>
+            <div class="chat-input-bar">
+                <button class="action-btn" type="button" aria-label="Create digital receipt" title="Create digital receipt" onclick="promptReceiptDetails()">🧾</button>
+                <input type="text" id="messageInput" placeholder="Type a message..." aria-label="Message" onkeydown="handleKeyPress(event)">
+                <button class="send-btn" type="button" aria-label="Send message" onclick="sendTextMessage()">➤</button>
+            </div>
+        </div>
+
+        <!-- Testing Simulation Bar -->
+        <div class="sim-panel">
+            <span id="signedInAs">UNI APP</span>
+            <button id="signOutButton" class="secondary-action" type="button">Sign out</button>
+        </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        const STORAGE_KEY = 'a-tech-workflow-chats-v1';
+        const ALERT_REPEAT_MS = 30000;
+        let audioContext = null;
+        let activeChatId = null;
+        let alertInterval = null;
+
+        function playBellSound() {
+            try {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextClass) return;
+                audioContext ??= new AudioContextClass();
+                if (audioContext.state === 'suspended') audioContext.resume();
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, audioContext.currentTime);
+                gain.gain.setValueAtTime(0.08, audioContext.currentTime);
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+                osc.start();
+                osc.stop(audioContext.currentTime + 0.22);
+            } catch (error) {
+                console.info('Notification sound is unavailable in this browser.');
+            }
+        }
+
+        const starterChats = [
+            { id: 1, name: "Emmanuel (Student)", lastMsg: "Please print my project document", status: "Pending", unread: true, messages: [
+                { sender: "incoming", text: "Hello, good afternoon sir.", time: "10:14 AM" },
+                { sender: "incoming", text: "Please print my project document (PDF attached).", time: "10:15 AM", isJob: true, jobTitle: "Print 45 pages spiral bound" }
+            ]}
+        ];
+
+        function loadChats() {
+            try {
+                const savedChats = JSON.parse(localStorage.getItem(STORAGE_KEY));
+                if (Array.isArray(savedChats) && savedChats.every(chat => Number.isSafeInteger(chat.id) && typeof chat.name === 'string' && Array.isArray(chat.messages))) {
+                    return savedChats;
+                }
+            } catch (error) {
+                console.warn('Saved chats could not be loaded.', error);
+            }
+            return starterChats;
+        }
+
+        let chats = loadChats();
+
+        function saveChats() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+            } catch (error) {
+                console.warn('Chats could not be saved in this browser.', error);
+            }
+        }
+
+        function createTextElement(tagName, className, text) {
+            const element = document.createElement(tagName);
+            if (className) element.className = className;
+            element.textContent = text ?? '';
+            return element;
+        }
+
+        function getTimeLabel() {
+            return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date());
+        }
+
+        function getMissedJobs() {
+            return chats.filter(chat => chat.unread && chat.status === 'Pending');
+        }
+
+        function showMissedJobNotification(missedJobs) {
+            if (!('Notification' in window) || Notification.permission !== 'granted' || !missedJobs.length) return;
+            try {
+                const names = missedJobs.slice(0, 3).map(chat => chat.name).join(', ');
+                const extraCount = missedJobs.length - 3;
+                const notification = new Notification('UNI APP: missed client job', {
+                    body: extraCount > 0 ? `${names} and ${extraCount} more` : names,
+                    tag: 'uni-app-missed-client-jobs',
+                    renotify: true
+                });
+                notification.onclick = () => {
+                    window.focus();
+                    showMissedJobs();
+                    notification.close();
+                };
+            } catch (error) {
+                console.info('Browser notifications are unavailable in this context.');
+            }
+        }
+
+        async function requestNotificationPermission() {
+            if (!('Notification' in window)) return false;
+            if (Notification.permission === 'granted') return true;
+            if (Notification.permission !== 'default') return false;
+            try {
+                return await Notification.requestPermission() === 'granted';
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function ringForMissedJobs(requestPermission = false) {
+            const missedJobs = getMissedJobs();
+            if (!missedJobs.length) return;
+            playBellSound();
+            if (requestPermission) {
+                requestNotificationPermission().then(granted => {
+                    if (granted) showMissedJobNotification(getMissedJobs());
+                });
+            } else {
+                showMissedJobNotification(missedJobs);
+            }
+        }
+
+        function showMissedJobs() {
+            requestNotificationPermission();
+            if (!document.getElementById('chatScreen').classList.contains('hidden')) goBackToInbox();
+            document.getElementById('searchInput').value = '';
+            setInboxFilter('unread');
+            document.getElementById('chatListContainer').scrollTop = 0;
+        }
+
+        function updateMissedJobAlert() {
+            const missedJobs = getMissedJobs();
+            const badge = document.getElementById('alarmBadge');
+            document.getElementById('alarmCount').textContent = missedJobs.length;
+            badge.classList.toggle('active', missedJobs.length > 0);
+            badge.setAttribute('aria-label', `${missedJobs.length} missed client ${missedJobs.length === 1 ? 'job' : 'jobs'}. Show missed jobs`);
+
+            if (missedJobs.length && !alertInterval) {
+                alertInterval = setInterval(() => {
+                    const currentMissedJobs = getMissedJobs();
+                    if (!currentMissedJobs.length) {
+                        clearInterval(alertInterval);
+                        alertInterval = null;
+                        return;
+                    }
+                    ringForMissedJobs();
+                }, ALERT_REPEAT_MS);
+            } else if (!missedJobs.length && alertInterval) {
+                clearInterval(alertInterval);
+                alertInterval = null;
+            }
+        }
+
+        let activeFilter = 'all';
+
+        function updateInboxCounts() {
+            const counts = {
+                all: chats.length,
+                unread: chats.filter(chat => chat.unread).length,
+                Pending: chats.filter(chat => chat.status === 'Pending').length,
+                progress: chats.filter(chat => chat.status === 'In Progress').length,
+                completed: chats.filter(chat => chat.status === 'Completed').length
+            };
+            document.getElementById('countAll').textContent = counts.all;
+            document.getElementById('countUnread').textContent = counts.unread;
+            document.getElementById('countPending').textContent = counts.Pending;
+            document.getElementById('countProgress').textContent = counts.progress;
+            document.getElementById('countCompleted').textContent = counts.completed;
+            document.getElementById('inboxSummary').textContent = `${chats.length} ${chats.length === 1 ? 'conversation' : 'conversations'}`;
+        }
+
+        function setInboxFilter(filter) {
+            activeFilter = filter;
+            document.querySelectorAll('.filter-pill').forEach(button => {
+                button.setAttribute('aria-pressed', String(button.dataset.filter === filter));
+            });
+            renderInbox();
+        }
+
+        function renderInbox() {
+            const container = document.getElementById('chatListContainer');
+            container.querySelectorAll('.chat-item').forEach(item => item.remove());
+            const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
+            const visibleChats = chats.filter(chat => {
+                const matchesFilter = activeFilter === 'all'
+                    || (activeFilter === 'unread' ? chat.unread : chat.status === activeFilter);
+                const searchable = `${chat.name} ${chat.lastMsg} ${chat.messages.map(message => `${message.text || ''} ${message.jobTitle || ''} ${message.service || ''}`).join(' ')}`.toLowerCase();
+                return matchesFilter && searchable.includes(searchTerm);
+            });
+
+            visibleChats.forEach(chat => {
+
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = `chat-item${chat.unread ? ' is-unread' : ''}`;
+                item.setAttribute('aria-label', `${chat.name}, ${chat.status}. ${chat.lastMsg || 'No messages yet'}`);
+                item.addEventListener('click', () => openChat(chat.id));
+
+                const avatar = createTextElement('span', 'avatar', chat.name.trim().charAt(0).toUpperCase() || '?');
+                avatar.setAttribute('aria-hidden', 'true');
+                const info = document.createElement('span');
+                info.className = 'chat-info';
+                const topline = createTextElement('span', 'chat-topline');
+                topline.appendChild(createTextElement('span', 'chat-name', chat.name));
+                if (chat.unread) {
+                    const unreadDot = createTextElement('span', 'unread-dot');
+                    unreadDot.setAttribute('aria-label', 'Unread');
+                    topline.appendChild(unreadDot);
+                }
+                info.append(topline, createTextElement('span', 'chat-preview', chat.lastMsg || 'No messages yet'));
+
+                const badgeClass = chat.status === 'In Progress' ? 'badge-progress' : chat.status === 'Completed' ? 'badge-completed' : 'badge-pending';
+                const status = createTextElement('span', `status-badge ${badgeClass}`, chat.status);
+                item.append(avatar, info, status);
+                container.appendChild(item);
+            });
+
+            document.getElementById('emptyInbox').classList.toggle('hidden', visibleChats.length > 0);
+            updateInboxCounts();
+            updateMissedJobAlert();
+        }
+
+        function openChat(chatId) {
+            activeChatId = chatId;
+            const chat = chats.find(item => item.id === chatId);
+            if (!chat) return;
+            chat.unread = false;
+            saveChats();
+            renderInbox();
+
+            document.getElementById('inboxScreen').classList.add('hidden');
+            document.getElementById('chatScreen').classList.remove('hidden');
+            document.getElementById('backBtn').classList.remove('hidden');
+            document.getElementById('headerTitle').innerText = chat.name;
+            document.getElementById('headerSubtitle').innerText = chat.status.toUpperCase();
+
+            renderMessages();
+        }
+
+        function goBackToInbox() {
+            activeChatId = null;
+            document.getElementById('chatScreen').classList.add('hidden');
+            document.getElementById('inboxScreen').classList.remove('hidden');
+            document.getElementById('backBtn').classList.add('hidden');
+            document.getElementById('headerTitle').innerText = "UNI APP";
+            document.getElementById('headerSubtitle').innerText = "CLIENT MESSAGES + JOBS";
+            renderInbox();
+        }
+
+        function renderMessages() {
+            const chat = chats.find(item => item.id === activeChatId);
+            if (!chat) return;
+            const area = document.getElementById('messagesArea');
+            area.innerHTML = '';
+
+            chat.messages.forEach(msg => {
+                const message = document.createElement('div');
+                message.className = `message ${msg.sender === 'outgoing' ? 'outgoing' : 'incoming'}`;
+
+                if (msg.isReceipt) {
+                    const receipt = document.createElement('div');
+                    receipt.className = 'receipt-card';
+                    receipt.append(createTextElement('h5', '', 'A-TECH COMPUTERS - RECEIPT'));
+                    receipt.append(createTextElement('p', '', `Service: ${msg.service}`));
+                    receipt.append(createTextElement('p', '', `Date: ${msg.time}`));
+                    receipt.append(createTextElement('p', 'receipt-total', `Total Paid: ${new Intl.NumberFormat(undefined, { style: 'currency', currency: 'NGN' }).format(Number(msg.amount))}`));
+                    message.appendChild(receipt);
+                } else {
+                    message.appendChild(createTextElement('span', '', msg.text));
+                }
+
+                if (msg.isJob) {
+                    const jobCard = document.createElement('div');
+                    jobCard.className = 'job-card';
+                    jobCard.appendChild(createTextElement('p', '', `Job request: ${msg.jobTitle}`));
+                    const actions = document.createElement('div');
+                    actions.className = 'job-actions';
+
+                    const acceptButton = createTextElement('button', '', 'Accept & Start');
+                    acceptButton.type = 'button';
+                    acceptButton.disabled = chat.status !== 'Pending';
+                    acceptButton.addEventListener('click', () => acceptJob(chat.id));
+                    const questionButton = createTextElement('button', 'reject', 'Ask a question');
+                    questionButton.type = 'button';
+                    questionButton.addEventListener('click', () => askJobQuestion(chat.id));
+                    actions.append(acceptButton, questionButton);
+                    jobCard.appendChild(actions);
+                    message.appendChild(jobCard);
+                }
+
+                message.appendChild(createTextElement('span', 'message-time', msg.time));
+                area.appendChild(message);
+            });
+            area.scrollTop = area.scrollHeight;
+        }
+
+        function acceptJob(chatId) {
+            const chat = chats.find(item => item.id === chatId);
+            if (!chat || chat.status !== 'Pending') return;
+            chat.status = "In Progress";
+            chat.messages.push({ sender: "outgoing", text: "Job accepted. I’m working on it now.", time: getTimeLabel() });
+            chat.lastMsg = 'Job accepted. I’m working on it now.';
+            saveChats();
+            document.getElementById('headerSubtitle').innerText = chat.status.toUpperCase();
+            renderMessages();
+            renderInbox();
+        }
+
+        function askJobQuestion(chatId) {
+            const chat = chats.find(item => item.id === chatId);
+            if (!chat) return;
+            const text = 'Could you share your deadline and any specific requirements?';
+            chat.messages.push({ sender: 'outgoing', text, time: getTimeLabel() });
+            chat.lastMsg = text;
+            saveChats();
+            renderMessages();
+            renderInbox();
+        }
+
+        function promptReceiptDetails() {
+            if(activeChatId === null) return;
+            const serviceDesc = prompt("Enter service description (e.g., Spiral Binding & Printing):", "Document Printing & Binding");
+            if (!serviceDesc || !serviceDesc.trim()) return;
+            const amountInput = prompt("Enter total price (in Naira):", "2500");
+            if (amountInput === null || !amountInput.trim()) return;
+            const amount = Number(amountInput.replace(/,/g, ''));
+            if (!Number.isFinite(amount) || amount < 0) {
+                alert('Enter a valid non-negative amount.');
+                return;
+            }
+
+            const chat = chats.find(item => item.id === activeChatId);
+            if (!chat) return;
+            chat.status = "Completed";
+            chat.messages.push({ 
+                sender: "outgoing", 
+                isReceipt: true, 
+                service: serviceDesc.trim(), 
+                amount: amount, 
+                time: getTimeLabel()
+            });
+            chat.lastMsg = `Receipt sent: ${new Intl.NumberFormat(undefined, { style: 'currency', currency: 'NGN' }).format(amount)}`;
+            saveChats();
+            document.getElementById('headerSubtitle').innerText = chat.status.toUpperCase();
+            renderMessages();
+            renderInbox();
+        }
+
+        function sendTextMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            if (!text || activeChatId === null) return;
+
+            const chat = chats.find(item => item.id === activeChatId);
+            if (!chat) return;
+            chat.messages.push({ sender: "outgoing", text, time: getTimeLabel() });
+            chat.lastMsg = text;
+            input.value = "";
+            saveChats();
+            renderMessages();
+            renderInbox();
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.isComposing) {
+                event.preventDefault();
+                sendTextMessage();
+            }
+        }
+
+        function simulateIncomingJob() {
+            const newId = chats.reduce((highestId, chat) => Math.max(highestId, chat.id), 0) + 1;
+            const jobName = 'Amina (New Client)';
+            const lastMsg = 'I need a custom flyer designed';
+            chats.push({
+                id: newId,
+                name: jobName,
+                lastMsg,
+                status: "Pending",
+                unread: true,
+                messages: [
+                    { sender: "incoming", text: "Hello! Good day.", time: getTimeLabel() },
+                    { sender: "incoming", text: "Can you help me design a birthday flyer? (Image asset attached)", time: getTimeLabel(), isJob: true, jobTitle: "Birthday Flyer Design - CorelDraw format" }
+                ]
+            });
+            saveChats();
+            renderInbox();
+            ringForMissedJobs(true);
+        }
+
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(() => console.log('Service Worker Registered!'))
+                .catch((err) => console.log('Service Worker Failed:', err));
+        }
+
+        // Initial render load
+        document.querySelectorAll('.filter-pill').forEach(button => {
+            button.addEventListener('click', () => setInboxFilter(button.dataset.filter));
+        });
+        document.getElementById('searchInput').addEventListener('input', renderInbox);
+        renderInbox();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="multiuser.js"></script>
+</body>
+</html>
